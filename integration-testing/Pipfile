@@ -17,5 +17,6 @@ ed25519 = "*"
 in-place = "*"
 pyblake2 = "*"
 setuptools = "*"
+pytest-tldr = "*"
 
 [dev-packages]
