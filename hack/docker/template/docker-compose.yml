@@ -72,3 +72,4 @@ services:
       - casperlabs
     command:
       - .casperlabs/sockets/.casper-node.sock
+      - debug-mode
