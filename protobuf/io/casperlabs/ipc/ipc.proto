@@ -25,6 +25,7 @@ message Deploy {
     // Public keys used to sign this deploy, to be checked against the keys
     // associated with the account.
     repeated bytes authorization_keys = 8;
+    bytes deploy_hash = 9;
 }
 
 message ExecRequest {
