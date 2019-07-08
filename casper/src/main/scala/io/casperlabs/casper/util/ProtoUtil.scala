@@ -28,20 +28,24 @@ object ProtoUtil {
   // TODO: Move into BlockDAG and remove corresponding param once that is moved over from simulator
   def isInMainChain[F[_]: Monad](
       dag: BlockDagRepresentation[F],
-      candidateBlockHash: BlockHash,
+      candidateBlockMetadata: BlockMetadata,
       targetBlockHash: BlockHash
   ): F[Boolean] =
-    if (candidateBlockHash == targetBlockHash) {
+    if (candidateBlockMetadata.blockHash == targetBlockHash) {
       true.pure[F]
     } else {
       for {
         targetBlockOpt <- dag.lookup(targetBlockHash)
         result <- targetBlockOpt match {
                    case Some(targetBlockMeta) =>
-                     targetBlockMeta.parents.headOption match {
-                       case Some(mainParentHash) =>
-                         isInMainChain(dag, candidateBlockHash, mainParentHash)
-                       case None => false.pure[F]
+                     if (targetBlockMeta.rank <= candidateBlockMetadata.rank)
+                       false.pure[F]
+                     else {
+                       targetBlockMeta.parents.headOption match {
+                         case Some(mainParentHash) =>
+                           isInMainChain(dag, candidateBlockMetadata, mainParentHash)
+                         case None => false.pure[F]
+                       }
                      }
                    case None => false.pure[F]
                  }
@@ -168,7 +172,6 @@ object ProtoUtil {
   def getCreatorJustificationAsListUntilGoalInMemory[F[_]: Monad](
       blockDag: BlockDagRepresentation[F],
       blockHash: BlockHash,
-      validator: Validator,
       goalFunc: BlockHash => Boolean = _ => false
   ): F[List[BlockHash]] =
     (for {
@@ -317,8 +320,7 @@ object ProtoUtil {
     }
 
   def toLatestMessage[F[_]: MonadThrowable: BlockStore](
-      justifications: Seq[Justification],
-      dag: BlockDagRepresentation[F]
+      justifications: Seq[Justification]
   ): F[immutable.Map[Validator, BlockMetadata]] =
     justifications.toList.foldM(Map.empty[Validator, BlockMetadata]) {
       case (acc, Justification(validator, hash)) =>
@@ -407,7 +409,7 @@ object ProtoUtil {
     ByteString.copyFrom(Base16.decode(string))
 
   def basicDeploy[F[_]: Monad: Time](
-      nonce: Int
+      nonce: Long
   ): F[Deploy] =
     Time[F].currentMillis.map { now =>
       basicDeploy(now, ByteString.EMPTY, nonce)
@@ -436,20 +438,20 @@ object ProtoUtil {
   }
 
   // TODO: it is for testing
-  def basicProcessedDeploy[F[_]: Monad: Time](id: Int): F[Block.ProcessedDeploy] =
+  def basicProcessedDeploy[F[_]: Monad: Time](id: Long): F[Block.ProcessedDeploy] =
     basicDeploy[F](id).map(deploy => Block.ProcessedDeploy(deploy = Some(deploy)))
 
-  def sourceDeploy(source: String, timestamp: Long, gasLimit: Long): Deploy =
-    sourceDeploy(ByteString.copyFromUtf8(source), timestamp, gasLimit)
+  def sourceDeploy(source: String, timestamp: Long): Deploy =
+    sourceDeploy(ByteString.copyFromUtf8(source), timestamp)
 
-  def sourceDeploy(sessionCode: ByteString, timestamp: Long, gasLimit: Long): Deploy =
+  def sourceDeploy(sessionCode: ByteString, timestamp: Long): Deploy =
     basicDeploy(timestamp, sessionCode)
 
   // https://casperlabs.atlassian.net/browse/EE-283
   // We are hardcoding exchange rate for DEV NET at 10:1
   // (1 token buys you 10 units of gas).
   // Later, post DEV NET, conversion rate will be part of a deploy.
-  val GAS_PRICE = 10
+  val GAS_PRICE = 10L
   val GAS_LIMIT = 100000000L
 
   def deployDataToEEDeploy(d: Deploy): ipc.Deploy = ipc.Deploy(

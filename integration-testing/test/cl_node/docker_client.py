@@ -1,8 +1,10 @@
 import logging
 import time
+import os
 from typing import Optional
 from collections import defaultdict
 
+from test.cl_node import LoggingMixin
 from test.cl_node.casperlabsnode import extract_block_count_from_show_blocks
 from test.cl_node.client_base import CasperLabsClient
 from test.cl_node.common import random_string
@@ -13,12 +15,12 @@ from test.cl_node.nonce_registry import NonceRegistry
 
 from docker.errors import ContainerError
 
-
-class DockerClient(CasperLabsClient):
+class DockerClient(CasperLabsClient, LoggingMixin):
 
     def __init__(self, node: 'DockerNode'):
         self.node = node
         self.docker_client = node.config.docker_client
+        super(DockerClient, self).__init__()
 
     @property
     def client_type(self) -> str:
@@ -32,7 +34,7 @@ class DockerClient(CasperLabsClient):
             }
         }
         command = f'--host {self.node.container_name} {command}'
-        logging.info(f"COMMAND {command}")
+        self.logger.info(f"COMMAND {command}")
         container = self.docker_client.containers.run(
             image = f"casperlabs/client:{self.node.docker_tag}",
             name = f"client-{self.node.config.number}-{random_string(5)}",
@@ -47,14 +49,18 @@ class DockerClient(CasperLabsClient):
         error, status_code = r['Error'], r['StatusCode']
         stdout = container.logs(stdout=True, stderr=False).decode('utf-8')
         stderr = container.logs(stdout=False, stderr=True).decode('utf-8')
-        logging.info(f"EXITED exit_code: {status_code} STDERR: {stderr} STDOUT: {stdout}")
+
+        # TODO: I don't understand why bug if I just call `self.logger.debug` then
+        # it doesn't print anything, even though the level is clearly set.
+        if self.log_level == 'DEBUG' or status_code != 0:
+            self.logger.info(f"EXITED exit_code: {status_code} STDERR: {stderr} STDOUT: {stdout}")
 
         try:
             container.remove()
         except docker.errors.APIError as e:
-            logging.warning(f"Exception while removing docker client container: {str(e)}")
+            self.logger.warning(f"Exception while removing docker client container: {str(e)}")
 
-        if status_code: 
+        if status_code:
             raise NonZeroExitCodeError(command=(command, status_code), exit_code=status_code, output=stderr)
 
         return stdout
@@ -70,28 +76,33 @@ class DockerClient(CasperLabsClient):
         while True:
             try:
                 return self.propose()
-            except NonZeroExitCodeError:
+            except NonZeroExitCodeError as ex:
                 if attempt < max_attempts:
-                    logging.debug("Could not propose; retrying later.")
+                    self.logger.debug("Could not propose; retrying later.")
                     attempt += 1
                     time.sleep(retry_seconds)
                 else:
-                    logging.debug("Could not propose; no more retries!")
+                    self.logger.debug("Could not propose; no more retries!")
                     raise ex
 
     def deploy(self,
-               from_address: str = "3030303030303030303030303030303030303030303030303030303030303030",
+               from_address: str = None,
                gas_limit: int = 1000000,
                gas_price: int = 1,
                nonce: Optional[int] = None,
-               session_contract: str = 'test_helloname.wasm',
-               payment_contract: str = 'test_helloname.wasm',
+               session_contract: str = None,
+               payment_contract: str = None,
                private_key: Optional[str] = None,
                public_key: Optional[str] = None) -> str:
 
-        deploy_nonce = nonce if nonce is not None else NonceRegistry.next(from_address)
+        assert session_contract is not None
+        assert payment_contract is not None
 
-        command = (f"deploy --from {from_address}"
+        address  = from_address or self.node.from_address()
+        deploy_nonce = nonce if nonce is not None else NonceRegistry.next(address)
+        payment_contract = payment_contract or session_contract
+
+        command = (f"deploy --from {address}"
                    f" --gas-limit {gas_limit}"
                    f" --gas-price {gas_price}"
                    f" --session=/data/{session_contract}"
@@ -107,7 +118,6 @@ class DockerClient(CasperLabsClient):
 
         r = self.invoke_client(command)
         return r
-
 
     def show_block(self, block_hash: str) -> str:
         return self.invoke_client(f'show-block {block_hash}')
@@ -141,11 +151,8 @@ class DockerClient(CasperLabsClient):
                                         f' --path "{path}"'
                                         f' --type "{key_type}"'))
 
-
     def show_deploys(self, hash: str):
         return parse_show_deploys(self.invoke_client(f'show-deploys {hash}'))
 
-
     def show_deploy(self, hash: str):
         return parse(self.invoke_client(f'show-deploy {hash}'))
-

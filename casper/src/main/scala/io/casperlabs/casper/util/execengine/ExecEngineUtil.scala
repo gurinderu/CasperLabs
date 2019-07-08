@@ -22,10 +22,10 @@ import io.casperlabs.smartcontracts.ExecutionEngineService
 case class DeploysCheckpoint(
     preStateHash: StateHash,
     postStateHash: StateHash,
+    bondedValidators: Seq[io.casperlabs.casper.consensus.Bond],
     deploysForBlock: Seq[Block.ProcessedDeploy],
     invalidNonceDeploys: Seq[InvalidNonceDeploy],
     deploysToDiscard: Seq[PreconditionFailure],
-    blockNumber: Long,
     protocolVersion: state.ProtocolVersion
 )
 
@@ -67,11 +67,7 @@ object ExecEngineUtil {
                        }
       deployEffects                 = findCommutingEffects(processedDeployResults)
       (deploysForBlock, transforms) = ExecEngineUtil.unzipEffectsAndDeploys(deployEffects).unzip
-      postStateHash                 <- ExecutionEngineService[F].commit(preStateHash, transforms.flatten).rethrow
-      maxBlockNumber = merged.parents.foldl(-1L) {
-        case (acc, b) => math.max(acc, blockNumber(b))
-      }
-      number = maxBlockNumber + 1
+      commitResult                  <- ExecutionEngineService[F].commit(preStateHash, transforms.flatten).rethrow
       //TODO: Remove this logging at some point
       msgBody = transforms.flatten
         .map(t => {
@@ -81,18 +77,18 @@ object ExecEngineUtil {
         })
         .mkString("\n")
       _ <- Log[F]
-            .info(s"Block #$number created with effects:\n$msgBody")
+            .info(s"Block created with effects:\n$msgBody")
     } yield DeploysCheckpoint(
       preStateHash,
-      postStateHash,
+      commitResult.postStateHash,
+      commitResult.bondedValidators,
       deploysForBlock,
       invalidDeploys.invalidNonceDeploys,
       invalidDeploys.preconditionFailures,
-      number,
       protocolVersion
     )
 
-  def processDeploys[F[_]: MonadError[?[_], Throwable]: BlockStore: ExecutionEngineService](
+  private def processDeploys[F[_]: MonadError[?[_], Throwable]: BlockStore: ExecutionEngineService](
       prestate: StateHash,
       blocktime: Long,
       deploys: Seq[Deploy],
@@ -100,6 +96,14 @@ object ExecEngineUtil {
   ): F[Seq[DeployResult]] =
     ExecutionEngineService[F]
       .exec(prestate, blocktime, deploys.map(ProtoUtil.deployDataToEEDeploy), protocolVersion)
+      .rethrow
+
+  private def processGenesisDeploys[F[_]: MonadError[?[_], Throwable]: BlockStore: ExecutionEngineService](
+      deploys: Seq[Deploy],
+      protocolVersion: state.ProtocolVersion
+  ): F[GenesisResult] =
+    ExecutionEngineService[F]
+      .runGenesis(deploys.map(ProtoUtil.deployDataToEEDeploy), protocolVersion)
       .rethrow
 
   //TODO: Logic for picking the commuting group? Prioritize highest revenue? Try to include as many deploys as possible?
@@ -123,6 +127,7 @@ object ExecEngineUtil {
                 (next :: acc, totalOps + ops)
               else
                 unchanged
+            case _ => ???
           }
 
         result
@@ -160,33 +165,42 @@ object ExecEngineUtil {
         ) -> effects.transformMap
     }
 
+  def isGenesisLike[F[_]: ExecutionEngineService](block: Block): Boolean =
+    block.getHeader.parentHashes.isEmpty &&
+      block.getHeader.getState.preStateHash == ExecutionEngineService[F].emptyStateHash
+
   /** Runs deploys from the block and returns the effects they make.
     *
     * @param block Block to run.
     * @param prestate prestate hash of the GlobalState on top of which to run deploys.
-    * @param dag Representation of the DAG.
     * @return Effects of running deploys from the block.
     */
-  def effectsForBlock[F[_]: Sync: BlockStore: ExecutionEngineService](
+  def effectsForBlock[F[_]: MonadThrowable: BlockStore: ExecutionEngineService](
       block: Block,
-      prestate: StateHash,
-      dag: BlockDagRepresentation[F]
+      prestate: StateHash
   ): F[Seq[TransformEntry]] = {
-    val deploys         = ProtoUtil.deploys(block)
+    val deploys         = ProtoUtil.deploys(block).flatMap(_.deploy)
     val protocolVersion = CasperLabsProtocolVersions.thresholdsVersionMap.fromBlock(block)
     val blocktime       = block.getHeader.timestamp
 
-    for {
-      processedDeploys <- processDeploys[F](
-                           prestate,
-                           blocktime,
-                           deploys.flatMap(_.deploy),
-                           protocolVersion
-                         )
-      deployEffects = zipDeploysResults(deploys.flatMap(_.deploy), processedDeploys)
-      transformMap = (findCommutingEffects _ andThen unzipEffectsAndDeploys)(deployEffects)
-        .flatMap(_._2)
-    } yield transformMap
+    if (isGenesisLike(block)) {
+      for {
+        genesisResult <- processGenesisDeploys[F](deploys, protocolVersion)
+        transformMap  = genesisResult.getEffect.transformMap
+      } yield transformMap
+    } else {
+      for {
+        processedDeploys <- processDeploys[F](
+                             prestate,
+                             blocktime,
+                             deploys,
+                             protocolVersion
+                           )
+        deployEffects = zipDeploysResults(deploys, processedDeploys)
+        transformMap = (findCommutingEffects _ andThen unzipEffectsAndDeploys)(deployEffects)
+          .flatMap(_._2)
+      } yield transformMap
+    }
   }
 
   def computePrestate[F[_]: MonadError[?[_], Throwable]: ExecutionEngineService](
@@ -197,9 +211,11 @@ object ExecEngineUtil {
       ProtoUtil.postStateHash(soleParent).pure[F] //single parent
     case MergeResult.Result(initParent, nonFirstParentsCombinedEffect, _) => //multiple parents
       val prestate = ProtoUtil.postStateHash(initParent)
-      MonadError[F, Throwable].rethrow(
-        ExecutionEngineService[F].commit(prestate, nonFirstParentsCombinedEffect)
-      )
+      MonadError[F, Throwable]
+        .rethrow(
+          ExecutionEngineService[F].commit(prestate, nonFirstParentsCombinedEffect)
+        )
+        .map(_.postStateHash)
   }
 
   type TransformMap = Seq[TransformEntry]
