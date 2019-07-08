@@ -1036,7 +1036,7 @@ where
                     println!("{}", msg);
                     Ok(None)
                 } else {
-                    panic!("ext_println ffi is available only in debug mode.")
+                    Ok(None)
                 }
             }
 
