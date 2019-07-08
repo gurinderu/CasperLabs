@@ -1,13 +1,12 @@
+extern crate casperlabs_engine_grpc_server;
 extern crate clap;
 extern crate ctrlc;
 extern crate dirs;
+extern crate execution_engine;
 extern crate grpc;
 #[macro_use]
 extern crate lazy_static;
 extern crate lmdb;
-
-extern crate casperlabs_engine_grpc_server;
-extern crate execution_engine;
 extern crate shared;
 extern crate storage;
 
@@ -21,17 +20,16 @@ use std::time::Duration;
 
 use clap::{App, Arg, ArgMatches};
 use dirs::home_dir;
-use execution_engine::engine_state::EngineState;
 use lmdb::DatabaseFlags;
 
+use casperlabs_engine_grpc_server::engine_server;
+use execution_engine::engine_state::EngineState;
 use shared::logging::log_settings::{LogLevelFilter, LogSettings};
 use shared::logging::{log_level, log_settings};
 use shared::os::get_page_size;
 use shared::{logging, socket};
 use storage::global_state::lmdb::LmdbGlobalState;
 use storage::trie_store::lmdb::{LmdbEnvironment, LmdbTrieStore};
-
-use casperlabs_engine_grpc_server::engine_server;
 
 // exe / proc
 const PROC_NAME: &str = "casperlabs-engine-grpc-server";
@@ -117,7 +115,9 @@ fn main() {
 
     let map_size = get_map_size(matches);
 
-    let _server = get_grpc_server(&socket, data_dir, map_size);
+    let debug_mode = get_debug_mode();
+
+    let _server = get_grpc_server(&socket, data_dir, map_size, debug_mode);
 
     log_listening_message(&socket);
 
@@ -233,8 +233,13 @@ fn get_map_size(matches: &ArgMatches) -> usize {
 }
 
 /// Builds and returns a gRPC server.
-fn get_grpc_server(socket: &socket::Socket, data_dir: PathBuf, map_size: usize) -> grpc::Server {
-    let engine_state = get_engine_state(data_dir, map_size);
+fn get_grpc_server(
+    socket: &socket::Socket,
+    data_dir: PathBuf,
+    map_size: usize,
+    debug_mode: bool,
+) -> grpc::Server {
+    let engine_state = get_engine_state(data_dir, map_size, debug_mode);
 
     engine_server::new(socket.as_str(), engine_state)
         .build()
@@ -242,7 +247,11 @@ fn get_grpc_server(socket: &socket::Socket, data_dir: PathBuf, map_size: usize) 
 }
 
 /// Builds and returns engine global state
-fn get_engine_state(data_dir: PathBuf, map_size: usize) -> EngineState<LmdbGlobalState> {
+fn get_engine_state(
+    data_dir: PathBuf,
+    map_size: usize,
+    debug_mode: bool,
+) -> EngineState<LmdbGlobalState> {
     let environment = {
         let ret = LmdbEnvironment::new(&data_dir, map_size).expect(LMDB_ENVIRONMENT_EXPECT);
         Arc::new(ret)
@@ -257,7 +266,7 @@ fn get_engine_state(data_dir: PathBuf, map_size: usize) -> EngineState<LmdbGloba
     let global_state = LmdbGlobalState::empty(Arc::clone(&environment), Arc::clone(&trie_store))
         .expect(LMDB_GLOBAL_STATE_EXPECT);
 
-    EngineState::new(global_state)
+    EngineState::new(global_state, debug_mode)
 }
 
 /// Builds and returns log_settings

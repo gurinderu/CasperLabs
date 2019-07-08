@@ -32,6 +32,7 @@ pub struct EngineState<H> {
     // Tracks the "state" of the blockchain (or is an interface to it).
     // I think it should be constrained with a lifetime parameter.
     state: Arc<Mutex<H>>,
+    debug_mode: bool,
 }
 
 impl<H> EngineState<H>
@@ -39,9 +40,9 @@ where
     H: History,
     H::Error: Into<execution::Error>,
 {
-    pub fn new(state: H) -> EngineState<H> {
+    pub fn new(state: H, debug_mode: bool) -> EngineState<H> {
         let state = Arc::new(Mutex::new(state));
-        EngineState { state }
+        EngineState { state, debug_mode }
     }
 
     #[allow(clippy::too_many_arguments)]

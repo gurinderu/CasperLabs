@@ -1,23 +1,23 @@
-// third-party dependencies
-extern crate clap;
-#[macro_use]
-extern crate lazy_static;
-
 // internal dependencies
 extern crate binascii;
+// third-party dependencies
+extern crate clap;
 extern crate common;
 extern crate execution_engine;
+#[macro_use]
+extern crate lazy_static;
 extern crate shared;
 extern crate storage;
 extern crate wasm_prep;
 
-use clap::{App, Arg, ArgMatches};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::prelude::*;
 use std::iter::Iterator;
 use std::str;
+
+use clap::{App, Arg, ArgMatches};
 
 use common::key::Key;
 use common::value::account::BlockTime;
@@ -205,7 +205,7 @@ fn main() {
     let global_state = InMemoryGlobalState::from_pairs(CorrelationId::new(), &init_state)
         .expect("Could not create global state");
     let mut state_hash: Blake2bHash = global_state.root_hash;
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     let wasmi_executor = WasmiExecutor;
     let wasm_costs = WasmCosts::from_version(protocol_version).unwrap_or_else(|| {

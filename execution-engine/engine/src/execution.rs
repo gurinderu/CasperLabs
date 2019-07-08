@@ -805,7 +805,6 @@ where
         }
     }
 
-    // TODO: use the flag.
     fn is_debug_mode(&self) -> bool {
         true
     }

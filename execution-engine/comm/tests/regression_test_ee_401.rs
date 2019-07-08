@@ -12,7 +12,6 @@ use grpc::RequestOptions;
 use casperlabs_engine_grpc_server::engine_server::ipc_grpc::ExecutionEngineService;
 use execution_engine::engine_state::EngineState;
 use storage::global_state::in_memory::InMemoryGlobalState;
-
 use test_support::DEFAULT_BLOCK_TIME;
 
 #[allow(unused)]
@@ -24,7 +23,7 @@ const GENESIS_ADDR: [u8; 32] = [0u8; 32];
 #[test]
 fn should_execute_contracts_which_provide_extra_urefs() {
     let global_state = InMemoryGlobalState::empty().unwrap();
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     // run genesis
 

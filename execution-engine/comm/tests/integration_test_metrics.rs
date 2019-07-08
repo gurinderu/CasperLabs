@@ -1,18 +1,18 @@
+extern crate casperlabs_engine_grpc_server;
+extern crate execution_engine;
 extern crate grpc;
 #[macro_use]
 extern crate lazy_static;
-
-extern crate execution_engine;
 extern crate shared;
 extern crate storage;
 
-extern crate casperlabs_engine_grpc_server;
-
-#[allow(unused)]
-mod test_support;
-
 use grpc::RequestOptions;
 
+use casperlabs_engine_grpc_server::engine_server::ipc::{
+    CommitRequest, Deploy, ExecRequest, QueryRequest, ValidateRequest,
+};
+use casperlabs_engine_grpc_server::engine_server::ipc_grpc::ExecutionEngineService;
+use casperlabs_engine_grpc_server::engine_server::state::{Key, Key_Address};
 use execution_engine::engine_state::EngineState;
 use shared::init::mocked_account;
 use shared::logging::log_level::LogLevel;
@@ -22,11 +22,8 @@ use shared::newtypes::CorrelationId;
 use shared::test_utils;
 use storage::global_state::in_memory::InMemoryGlobalState;
 
-use casperlabs_engine_grpc_server::engine_server::ipc::{
-    CommitRequest, Deploy, ExecRequest, QueryRequest, ValidateRequest,
-};
-use casperlabs_engine_grpc_server::engine_server::ipc_grpc::ExecutionEngineService;
-use casperlabs_engine_grpc_server::engine_server::state::{Key, Key_Address};
+#[allow(unused)]
+mod test_support;
 
 pub const PROC_NAME: &str = "ee-shared-lib-tests";
 
@@ -51,7 +48,7 @@ fn should_query_with_metrics() {
     let mocked_account = mocked_account(test_support::MOCKED_ACCOUNT_ADDRESS);
     let global_state = InMemoryGlobalState::from_pairs(correlation_id, &mocked_account).unwrap();
     let root_hash = global_state.root_hash.to_vec();
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     let mut query_request = QueryRequest::new();
     {
@@ -103,7 +100,7 @@ fn should_exec_with_metrics() {
     let mocked_account = mocked_account(test_support::MOCKED_ACCOUNT_ADDRESS);
     let global_state = InMemoryGlobalState::from_pairs(correlation_id, &mocked_account).unwrap();
     let root_hash = global_state.root_hash.to_vec();
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     let mut exec_request = ExecRequest::new();
     {
@@ -153,7 +150,7 @@ fn should_commit_with_metrics() {
     let mocked_account = mocked_account(test_support::MOCKED_ACCOUNT_ADDRESS);
     let global_state = InMemoryGlobalState::from_pairs(correlation_id, &mocked_account).unwrap();
     let root_hash = global_state.root_hash.to_vec();
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     let request_options = RequestOptions::new();
 
@@ -199,7 +196,7 @@ fn should_validate_with_metrics() {
     let correlation_id = CorrelationId::new();
     let mocked_account = mocked_account(test_support::MOCKED_ACCOUNT_ADDRESS);
     let global_state = InMemoryGlobalState::from_pairs(correlation_id, &mocked_account).unwrap();
-    let engine_state = EngineState::new(global_state);
+    let engine_state = EngineState::new(global_state, true);
 
     let mut validate_request = ValidateRequest::new();
 
