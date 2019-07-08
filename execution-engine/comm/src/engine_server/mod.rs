@@ -503,7 +503,7 @@ where
     deploys
         .iter()
         .map(|deploy| {
-            let deploy_hash = deploy.get_deploy_hash();
+            let deploy_hash = base16::encode_lower(deploy.get_deploy_hash());
             let session_contract = deploy.get_session();
             let module_bytes = &session_contract.code;
             let args = &session_contract.args;
@@ -535,6 +535,7 @@ where
                     prestate_hash,
                     gas_limit,
                     protocol_version,
+                    deploy_hash,
                     correlation_id,
                     executor,
                     preprocessor,

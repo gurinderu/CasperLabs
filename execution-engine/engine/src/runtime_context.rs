@@ -17,11 +17,10 @@ use common::value::account::{
     SetThresholdFailure, Weight,
 };
 use common::value::{Contract, Value};
-use shared::newtypes::{CorrelationId, Validated};
-use storage::global_state::StateReader;
-
 use engine_state::execution_effect::ExecutionEffect;
 use execution::Error;
+use shared::newtypes::{CorrelationId, Validated};
+use storage::global_state::StateReader;
 use tracking_copy::{AddResult, TrackingCopy};
 use URefAddr;
 
@@ -44,6 +43,7 @@ pub struct RuntimeContext<'a, R> {
     fn_store_id: u32,
     rng: Rc<RefCell<ChaChaRng>>,
     protocol_version: u64,
+    deploy_hash: String,
     correlation_id: CorrelationId,
 }
 
@@ -65,6 +65,7 @@ where
         fn_store_id: u32,
         rng: Rc<RefCell<ChaChaRng>>,
         protocol_version: u64,
+        deploy_hash: String,
         correlation_id: CorrelationId,
     ) -> Self {
         RuntimeContext {
@@ -80,6 +81,7 @@ where
             fn_store_id,
             rng,
             protocol_version,
+            deploy_hash,
             correlation_id,
         }
     }
@@ -238,6 +240,10 @@ where
 
     pub fn correlation_id(&self) -> CorrelationId {
         self.correlation_id
+    }
+
+    pub fn deploy_hash(&self) -> String {
+        self.deploy_hash.to_owned()
     }
 
     /// Generates new function address.
@@ -686,19 +692,19 @@ mod tests {
 
     use common::key::{Key, LOCAL_SEED_SIZE};
     use common::uref::{AccessRights, URef};
-    use common::value::{self, Account, Contract, Value};
-    use shared::transform::Transform;
-    use storage::global_state::in_memory::InMemoryGlobalState;
-    use storage::global_state::{CommitResult, History};
-
-    use super::{Error, RuntimeContext, URefAddr, Validated};
     use common::value::account::{
         AccountActivity, ActionType, AddKeyFailure, AssociatedKeys, BlockTime, PublicKey, PurseId,
         RemoveKeyFailure, SetThresholdFailure, Weight,
     };
+    use common::value::{self, Account, Contract, Value};
     use execution::{create_rng, extract_access_rights_from_keys};
     use shared::newtypes::CorrelationId;
+    use shared::transform::Transform;
+    use storage::global_state::in_memory::InMemoryGlobalState;
+    use storage::global_state::{CommitResult, History};
     use tracking_copy::TrackingCopy;
+
+    use super::{Error, RuntimeContext, URefAddr, Validated};
 
     fn mock_tc(init_key: Key, init_account: value::Account) -> TrackingCopy<InMemoryGlobalState> {
         let correlation_id = CorrelationId::new();
@@ -793,6 +799,7 @@ mod tests {
             0,
             Rc::new(RefCell::new(rng)),
             1,
+            "".to_owned(),
             CorrelationId::new(),
         )
     }
@@ -1088,6 +1095,7 @@ mod tests {
             0,
             Rc::new(RefCell::new(chacha_rng)),
             1,
+            "".to_owned(),
             CorrelationId::new(),
         );
 
@@ -1140,6 +1148,7 @@ mod tests {
             0,
             Rc::new(RefCell::new(chacha_rng)),
             1,
+            "".to_owned(),
             CorrelationId::new(),
         );
 

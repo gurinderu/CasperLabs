@@ -219,6 +219,7 @@ fn main() {
     for (i, wasm_bytes) in wasm_files.iter().enumerate() {
         let correlation_id = CorrelationId::new();
         let nonce = i as u64 + 1;
+        let deploy_hash = format!("{}", i);
         let result = engine_state.run_deploy(
             &wasm_bytes.bytes,
             &[], // TODO: consume args from CLI
@@ -228,6 +229,7 @@ fn main() {
             state_hash,
             gas_limit,
             protocol_version,
+            deploy_hash,
             correlation_id,
             &wasmi_executor,
             &wasmi_preprocessor,

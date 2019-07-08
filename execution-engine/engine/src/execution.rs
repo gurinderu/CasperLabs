@@ -1034,7 +1034,7 @@ where
 
                 if self.is_debug_mode() {
                     let msg = self.string_from_mem(value_ptr, value_size)?;
-                    let log_message = format!("{}: {}", self.context.correlation_id(), msg);
+                    let log_message = format!("{} - {}", self.context.deploy_hash(), msg);
                     logging::log_info(&log_message);
                     Ok(None)
                 } else {
@@ -1254,6 +1254,7 @@ where
             current_runtime.context.fn_store_id(),
             current_runtime.context.rng(),
             protocol_version,
+            current_runtime.context.deploy_hash(),
             current_runtime.context.correlation_id(),
         ),
     };
@@ -1391,6 +1392,7 @@ pub trait Executor<A> {
         nonce: u64,
         gas_limit: u64,
         protocol_version: u64,
+        deploy_hash: String,
         correlation_id: CorrelationId,
         tc: Rc<RefCell<TrackingCopy<R>>>,
     ) -> ExecutionResult
@@ -1418,6 +1420,7 @@ impl Executor<Module> for WasmiExecutor {
         nonce: u64,
         gas_limit: u64,
         protocol_version: u64,
+        deploy_hash: String,
         correlation_id: CorrelationId,
         tc: Rc<RefCell<TrackingCopy<R>>>,
     ) -> ExecutionResult
@@ -1505,6 +1508,7 @@ impl Executor<Module> for WasmiExecutor {
             fn_store_id,
             Rc::new(RefCell::new(rng)),
             protocol_version,
+            deploy_hash,
             correlation_id,
         );
 
@@ -1672,6 +1676,7 @@ mod tests {
             invalid_nonce,
             100u64,
             1u64,
+            "".to_owned(),
             CorrelationId::new(),
             tc,
         );

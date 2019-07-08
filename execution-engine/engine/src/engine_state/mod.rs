@@ -103,6 +103,7 @@ where
         prestate_hash: Blake2bHash,
         gas_limit: u64,
         protocol_version: u64,
+        deploy_hash: String,
         correlation_id: CorrelationId,
         executor: &E,
         preprocessor: &P,
@@ -127,6 +128,7 @@ where
             nonce,
             gas_limit,
             protocol_version,
+            deploy_hash,
             correlation_id,
             tracking_copy,
         ))
