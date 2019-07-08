@@ -168,7 +168,7 @@ where
 
         let preprocessor: WasmiPreprocessor = WasmiPreprocessor::new(wasm_costs);
 
-        let executor = WasmiExecutor;
+        let executor = WasmiExecutor::new(self.is_debug_mode());
 
         let deploys_result: Result<Vec<ipc::DeployResult>, ipc::RootNotFound> = run_deploys(
             &self,

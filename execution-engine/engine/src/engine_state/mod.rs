@@ -142,6 +142,10 @@ where
             .lock()
             .commit(correlation_id, prestate_hash, effects)
     }
+
+    pub fn is_debug_mode(&self) -> bool {
+        self.debug_mode
+    }
 }
 
 pub enum GetBondedValidatorsError<H: History> {

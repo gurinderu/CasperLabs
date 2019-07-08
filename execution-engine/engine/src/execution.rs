@@ -137,6 +137,7 @@ impl From<SetThresholdFailure> for Error {
 impl HostError for Error {}
 
 pub struct Runtime<'a, R> {
+    debug_mode: bool,
     memory: MemoryRef,
     module: Module,
     result: Vec<u8>,
@@ -165,8 +166,14 @@ where
     R::Error: Into<Error>,
 {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(memory: MemoryRef, module: Module, context: RuntimeContext<'a, R>) -> Self {
+    pub fn new(
+        debug_mode: bool,
+        memory: MemoryRef,
+        module: Module,
+        context: RuntimeContext<'a, R>,
+    ) -> Self {
         Runtime {
+            debug_mode,
             memory,
             module,
             result: Vec::new(),
@@ -805,8 +812,8 @@ where
         }
     }
 
-    fn is_debug_mode(&self) -> bool {
-        true
+    pub fn is_debug_mode(&self) -> bool {
+        self.debug_mode
     }
 }
 
@@ -1227,6 +1234,7 @@ where
     let known_urefs = extract_access_rights_from_keys(refs.values().cloned().chain(extra_urefs));
 
     let mut runtime = Runtime {
+        debug_mode: current_runtime.is_debug_mode(),
         memory,
         module: parity_module,
         result: Vec::new(),
@@ -1388,7 +1396,15 @@ pub trait Executor<A> {
         R::Error: Into<Error>;
 }
 
-pub struct WasmiExecutor;
+pub struct WasmiExecutor {
+    debug_mode: bool,
+}
+
+impl WasmiExecutor {
+    pub fn new(debug_mode: bool) -> Self {
+        WasmiExecutor { debug_mode }
+    }
+}
 
 impl Executor<Module> for WasmiExecutor {
     fn exec<R: StateReader<Key, Value>>(
@@ -1490,7 +1506,7 @@ impl Executor<Module> for WasmiExecutor {
             correlation_id,
         );
 
-        let mut runtime = Runtime::new(memory, parity_module, context);
+        let mut runtime = Runtime::new(self.debug_mode, memory, parity_module, context);
         on_fail_charge!(
             instance.invoke_export("call", &[], &mut runtime),
             runtime.context.gas_counter(),
@@ -1632,7 +1648,7 @@ mod tests {
             }
         }
 
-        let executor = WasmiExecutor;
+        let executor = WasmiExecutor::new(true);
         let account_address = [0u8; 32];
         let account_key: Key = Key::Account(account_address);
         let parity_module: Module = ModuleBuilder::new()

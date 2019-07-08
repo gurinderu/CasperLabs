@@ -207,7 +207,7 @@ fn main() {
     let mut state_hash: Blake2bHash = global_state.root_hash;
     let engine_state = EngineState::new(global_state, true);
 
-    let wasmi_executor = WasmiExecutor;
+    let wasmi_executor = WasmiExecutor::new(true);
     let wasm_costs = WasmCosts::from_version(protocol_version).unwrap_or_else(|| {
         panic!(
             "Wasm cost table wasn't defined for protocol version: {}",
