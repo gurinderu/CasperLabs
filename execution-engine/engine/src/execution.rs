@@ -34,6 +34,7 @@ use resolvers::create_module_resolver;
 use resolvers::error::ResolverError;
 use resolvers::memory_resolver::MemoryResolver;
 use runtime_context::RuntimeContext;
+use shared::logging;
 use shared::newtypes::{CorrelationId, Validated};
 use shared::transform::TypeMismatch;
 use storage::global_state::StateReader;
@@ -1033,7 +1034,8 @@ where
 
                 if self.is_debug_mode() {
                     let msg = self.string_from_mem(value_ptr, value_size)?;
-                    println!("{}", msg);
+                    let log_message = format!("{}: {}", self.context.correlation_id(), msg);
+                    logging::log_info(&log_message);
                     Ok(None)
                 } else {
                     Ok(None)
