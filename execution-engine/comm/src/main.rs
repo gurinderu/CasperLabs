@@ -280,7 +280,13 @@ fn get_log_settings() -> log_settings::LogSettings {
 
 fn get_debug_mode() -> bool {
     let matches: &clap::ArgMatches = &*ARG_MATCHES;
-    matches.is_present(DEBUG_MODE_STR)
+    let debug = matches.is_present(DEBUG_MODE_STR);
+    let debug_msg = format!(
+        "Execution-engine is {}running in Debug mode.",
+        if debug { "" } else { "not " }
+    );
+    logging::log_info(&debug_msg);
+    debug
 }
 
 /// Logs listening on socket message
