@@ -408,12 +408,21 @@ lazy val smartContracts = (project in file("smart-contracts"))
   .dependsOn(shared, models)
 
 lazy val client = (project in file("client"))
-  .enablePlugins(RpmPlugin, DebianPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .enablePlugins(RpmPlugin, DebianPlugin, JavaAppPackaging, BuildInfoPlugin, GraalVMNativeImagePlugin)
   .settings(commonSettings: _*)
   .settings(
     name := "client",
     version := nodeAndClientVersion,
     maintainer := "CasperLabs, LLC. <info@casperlabs.io>",
+    graalVMNativeImageOptions := Seq(
+      "--static",
+      "--enable-http",
+      "--enable-https",
+      "--enable-url-protocols=http,https",
+      "--enable-all-security-services",
+      s"-H:ConfigurationFileDirectories=$resourceDirectory/graal",
+      "-H:+ReportUnsupportedElementsAtRuntime"
+    ),
     packageName := "casperlabs-client",
     packageName in Docker := "client",
     executableScriptName := "casperlabs-client",
