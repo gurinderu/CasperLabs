@@ -414,15 +414,13 @@ lazy val client = (project in file("client"))
     name := "client",
     version := nodeAndClientVersion,
     maintainer := "CasperLabs, LLC. <info@casperlabs.io>",
-    graalVMNativeImageOptions := Seq(
-    ),
     packageName := "casperlabs-client",
     packageName in Docker := "client",
     executableScriptName := "casperlabs-client",
     //javacOptions ++= Seq("-Dnashorn.args=\"--no-deprecation-warning\""),
     packageSummary := "CasperLabs Client",
     packageDescription := "CLI tool for interaction with the CasperLabs Node",
-    libraryDependencies ++= commonDependencies ++ Seq(scallop, grpcNetty, graphvizJava, apacheCommons, svm),
+    libraryDependencies ++= commonDependencies ++ Seq(scallop, grpcNetty, graphvizJava, apacheCommons ),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, git.gitHeadCommit),
     buildInfoPackage := "io.casperlabs.client",
     /* Dockerization */
