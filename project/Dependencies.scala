@@ -87,6 +87,7 @@ object Dependencies {
   val tomlScala     = "tech.sparse"       %% "toml-scala"    % "0.1.1"
   val refinement    = "eu.timepit"        %% "refined"       % "0.9.5"
   val apacheCommons = "commons-io" % "commons-io" % "2.6"
+  val svm = "com.oracle.substratevm" % "svm" % "19.1.0" % "provided"
 
   val overrides = Seq(
     catsCore,
