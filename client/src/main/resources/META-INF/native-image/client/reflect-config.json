@@ -1,0 +1,58 @@
+[
+{
+  "name":"io.casperlabs.client.configuration.Options",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$10",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$11",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$12",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$2",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$3",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$4",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$5",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$6",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$7",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$8",
+  "allPublicMethods":true
+},
+{
+  "name":"io.casperlabs.client.configuration.Options$$anon$9",
+  "allPublicMethods":true
+},
+{
+  "name":"org.rogach.scallop.ScallopConf",
+  "allPublicMethods":true
+},
+{
+  "name":"scala.concurrent.BlockContext$",
+  "allDeclaredMethods":true
+}
+]
